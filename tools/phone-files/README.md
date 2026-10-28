@@ -71,3 +71,15 @@ platform-tools/    (adb，Google 官方，Apache 2.0)
 
 `phone-files.bat` 第一次运行会自动问手机地址，并写进 `phone.txt`，不需要手动编辑文本文件。
 另外还附带 `使用说明.txt`（中文图文步骤）。
+
+## 用命令行跑 adb
+
+包里自带 `adb.cmd`（指向内置的 `platform-tools\adb.exe`）：
+
+```cmd
+adb.cmd devices
+adb.cmd install xxx.apk
+adb.cmd shell pm list packages
+```
+
+想直接敲 `adb`？把本文件夹加进 PATH 即可（不加也行，用 `adb.cmd` 一样）。
