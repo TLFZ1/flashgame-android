@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="zh"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>html,body{margin:0;height:100%;background:#000;overflow:hidden}#s{width:100%;height:100%}ruffle-player{width:100%;height:100%}</style>
+</head><body><div id="s"></div>
+<script>
+window.RufflePlayer = window.RufflePlayer || {};
+// 设备字体回退：
+// - key 必须是 Ruffle 认的 6 个标识符（sans/serif/typewriter/japaneseGothic/
+//   japaneseGothicMono/japaneseMincho）；写 Flash 字体名（_明朝 之类）会被静默忽略。
+// - value 必须是字体内部的 FULL_NAME（不是 URL/路径）；Ruffle 用完整名注册字体。
+window.RufflePlayer.config = {
+  fontSources: ['../../FlashGameCJK.ttf'],
+  defaultFonts: {
+    sans: ['Flash Game CJK Regular', '../../FlashGameCJK.ttf'],
+    serif: ['Flash Game CJK Regular', '../../FlashGameCJK.ttf'],
+    typewriter: ['Flash Game CJK Regular', '../../FlashGameCJK.ttf'],
+    japaneseGothic: ['Flash Game CJK Regular', '../../FlashGameCJK.ttf'],
+    japaneseGothicMono: ['Flash Game CJK Regular', '../../FlashGameCJK.ttf'],
+    japaneseMincho: ['Flash Game CJK Regular', '../../FlashGameCJK.ttf']
+  }
+};
+</script>
+<script src="../../ruffle.js"></script>
+<script>
+var p = window.RufflePlayer.newest().createPlayer();
+p.style.width = '100%'; p.style.height = '100%';
+document.getElementById('s').appendChild(p);
+p.load(encodeURI('__GAME__'));
+</script></body></html>

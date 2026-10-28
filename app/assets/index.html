@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Flash Game Android</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background:#12141a; color:#e6e8ee;
+    user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
+  header { padding:20px 16px 8px; }
+  h1 { font-size:19px; margin:0 0 4px; font-weight:600; letter-spacing:.2px; }
+  p.sub { margin:0; color:#8b93a5; font-size:12.5px; }
+  #list { list-style:none; margin:0; padding:10px 12px 96px; }
+  li { margin:8px 0; }
+  button.game { width:100%; text-align:left; background:#1b1f29; border:1px solid #262c3a; color:#e6e8ee;
+    padding:14px 16px; border-radius:12px; font-size:15px; display:flex; justify-content:space-between;
+    align-items:center; gap:10px; font-family:inherit; }
+  button.game:active { background:#232936; }
+  .meta { display:flex; flex-direction:column; gap:2px; min-width:0; }
+  .meta span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .meta small { color:#7f8798; font-size:11.5px; }
+  .tag { font-size:11px; color:#93a0b8; background:#232936; padding:3px 8px; border-radius:999px; white-space:nowrap; }
+  .tag.multi { color:#c9b27a; }
+  .empty { margin:40px 20px; color:#7f8798; font-size:13.5px; line-height:1.7; text-align:center; }
+  .empty b { color:#aab2c2; }
+  #addbar { position:fixed; left:env(safe-area-inset-left, 0px); right:env(safe-area-inset-right, 0px);
+    bottom:env(safe-area-inset-bottom, 0px); display:flex; gap:8px; padding:10px 12px 16px;
+    background:linear-gradient(to top, #12141a 62%, rgba(18,20,26,0)); }
+  #addbar button { flex:1; padding:13px 10px; border-radius:12px; border:1px solid #2c3444; background:#1d2431;
+    color:#cfd8e8; font-size:13.5px; font-family:inherit; }
+  #addbar button:active { background:#283144; }
+  #modal, #progress { position:fixed; inset:0; background:rgba(0,0,0,.6); display:flex; align-items:center;
+    justify-content:center; z-index:50; padding:24px; }
+  #modal.hidden, #progress.hidden { display:none; }
+  .sheet { width:100%; max-width:340px; background:#1b1f29; border:1px solid #2c3444; border-radius:16px; padding:16px; }
+  .sheet .title { font-size:14px; color:#9aa5b8; margin:0 0 12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .sheet button { width:100%; padding:14px; margin-top:8px; border-radius:12px; border:1px solid #2c3444;
+    background:#232936; color:#e6e8ee; font-size:15px; font-family:inherit; }
+  .sheet button.danger { color:#ff8a80; }
+  .sheet input { width:100%; padding:13px; border-radius:12px; border:1px solid #2c3444; background:#12141a;
+    color:#e6e8ee; font-size:15px; font-family:inherit; }
+  .bar { width:100%; max-width:300px; height:8px; border-radius:4px; background:#262c3a; overflow:hidden; }
+  #pfill { height:100%; width:0%; background:#5b8cff; transition:width .12s linear; }
+  #ptext { text-align:center; color:#aab2c2; font-size:13px; margin-top:12px; }
+  #player { position:fixed; top:env(safe-area-inset-top, 0px); right:env(safe-area-inset-right, 0px);
+    bottom:env(safe-area-inset-bottom, 0px); left:env(safe-area-inset-left, 0px);
+    background:#000; display:none; flex-direction:column; }
+  #player.on { display:flex; }
+  #bar { height:50px; display:flex; align-items:center; gap:8px; padding:0 8px; background:#161a22; flex:0 0 auto; }
+  #bar button { background:#2a3140; color:#e6e8ee; border:0; padding:8px 12px; border-radius:8px; font-size:14px; font-family:inherit; }
+  #bar .name { font-size:13px; color:#aab2c2; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1 1 auto; min-width:0; }
+  #stage { flex:1 1 auto; position:relative; overflow:hidden; background:#000; }
+  #stage ruffle-player, #stage iframe {
+    position:absolute; left:50%; top:50%; transform-origin:center center;
+    transform:translate(-50%,-50%); border:0;
+  }
+  #loading { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#8b93a5; font-size:13px; }
+  #bar button.icon { width:36px; height:36px; padding:0; border-radius:18px; font-size:15px; line-height:1; }
+  #hud { position:absolute; right:calc(10px + env(safe-area-inset-right, 0px)); bottom:calc(10px + env(safe-area-inset-bottom, 0px));
+    display:flex; flex-direction:column; gap:8px; z-index:6; }
+  #hud button { width:46px; height:46px; border-radius:23px; border:1px solid #3a4459; background:rgba(30,36,48,.82);
+    color:#dfe5f0; font-size:17px; line-height:1; }
+  #hud button.on { background:#3d6bd8; border-color:#5b8cff; color:#fff; }
+  body.hud-hidden #hud { display:none; }
+  /* 键盘打开时：HUD 变成顶栏下方的一行，仍可缩放/拖动 */
+  body.pad-open #hud { top: calc(58px + env(safe-area-inset-top, 0px)); bottom:auto;
+    right: calc(12px + env(safe-area-inset-right, 0px)); flex-direction: row; gap:6px; }
+  body.pad-open #hud button { width:40px; height:40px; border-radius:20px; font-size:15px; }
+  #panLayer { position:absolute; inset:0; z-index:5; display:none; touch-action:none; }
+  #panLayer.on { display:block; }
+  #showBtn { position:absolute; top:8px; right:8px; width:36px; height:36px; border-radius:18px;
+    background:rgba(255,255,255,.10); border:1px solid rgba(255,255,255,.16); color:rgba(255,255,255,.6);
+    font-size:15px; display:none; z-index:8; padding:0; align-items:center; justify-content:center; }
+  #addbar #helpBtn { flex:0 0 52px; font-size:17px; color:#9aa5b8; }
+  #help { position:fixed; inset:0; background:#12141a; z-index:60; overflow-y:auto; padding:18px 18px 40px; display:none; }
+  #help.on { display:block; }
+  #help h2 { font-size:17px; margin:0 0 6px; }
+  #help h3 { font-size:13.5px; color:#9fb0c8; margin:22px 0 8px; font-weight:600; }
+  #help p, #help li { font-size:13px; line-height:1.75; color:#c3cbd8; margin:6px 0; }
+  #help ul { padding:0 0 0 20px; margin:8px 0; list-style:disc; }
+  #help code { background:#1b1f29; border:1px solid #2c3444; border-radius:5px; padding:1px 5px; font-size:12px; }
+  #help .row { display:flex; justify-content:space-between; gap:12px; padding:8px 0; border-bottom:1px solid #1e2430; font-size:13px; }
+  #help .row span:first-child { color:#8fd0ff; font-family:ui-monospace,monospace; }
+  #help .row span:last-child { color:#c3cbd8; text-align:right; }
+  #help .close { position:fixed; top:14px; right:14px; width:34px; height:34px; border-radius:17px;
+    border:1px solid #2c3444; background:#1b1f29; color:#9aa5b8; font-size:15px; }
+  #help select { background:#1b1f29; color:#e6e8ee; border:1px solid #2c3444; border-radius:8px;
+    padding:6px 8px; font-size:13px; font-family:inherit; }
+  #help .mini { margin-top:12px; padding:10px 14px; border-radius:10px; border:1px solid #2c3444;
+    background:#232936; color:#cfd8e8; font-size:13px; font-family:inherit; }
+  #urlBox { display:flex; gap:8px; margin-top:8px; }
+  #urlBox input { flex:1; min-width:0; padding:11px; border-radius:10px; border:1px solid #2c3444; background:#1b1f29;
+    color:#e6e8ee; font-size:13px; font-family:inherit; }
+  #urlBox button { padding:11px 14px; border-radius:10px; border:1px solid #2c3444; background:#232936; color:#e6e8ee;
+    font-size:13px; font-family:inherit; }
+  #pad { position:absolute; left:0; right:0; bottom:0; display:none; z-index:7; pointer-events:none;
+    --k:56px; --a:.62; }
+  #pad.on { display:block; }
+  #pad .cluster { position:absolute; bottom:calc(16px + env(safe-area-inset-bottom, 0px)); pointer-events:auto; }
+  #pad .left { left:calc(16px + env(safe-area-inset-left, 0px)); }
+  #pad .right { right:calc(16px + env(safe-area-inset-right, 0px)); display:flex; flex-direction:column;
+    align-items:flex-end; gap:10px; }
+  #pad .diamond { display:grid; grid-template-columns:repeat(3, var(--k)); grid-template-rows:repeat(3, var(--k)); gap:6px; }
+  #pad .minis { display:flex; gap:6px; }
+  #pad button {
+    border-radius:calc(var(--k) * .3); border:1px solid rgba(255,255,255,.18);
+    background:rgba(20,25,35,var(--a)); color:#e6e8ee; font-size:calc(var(--k) * .3); line-height:1; padding:0;
+    user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; touch-action:none;
+    transition:transform .06s ease, background .06s ease;
+  }
+  #pad .diamond button { width:var(--k); height:var(--k); }
+  #pad .minis button { width:calc(var(--k) * .8); height:calc(var(--k) * .62);
+    border-radius:calc(var(--k) * .2); font-size:calc(var(--k) * .24); }
+  #pad button.pressed { background:rgba(61,107,216,.95); border-color:#7aa0ff; transform:scale(.93); }
+
+  /* 全键盘模式 */
+  #pad .cluster { display:block; }
+  #pad.qmode .cluster { display:none; }
+  #qkbd { position:absolute; left:0; right:0; bottom:calc(10px + env(safe-area-inset-bottom, 0px));
+    display:none; padding:0 8px; pointer-events:auto; }
+  #pad.qmode #qkbd { display:block; }
+  #qkbd .krow { display:flex; gap:5px; margin-bottom:5px; justify-content:center; }
+  #qkbd button {
+    flex:1 1 0; min-width:0; max-width:64px; height:44px; border-radius:9px;
+    border:1px solid rgba(255,255,255,.18); background:rgba(20,25,35,var(--a));
+    color:#e6e8ee; font-size:15px; padding:0;
+    user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; touch-action:none;
+  }
+  #qkbd button.wide { flex:2 1 0; max-width:130px; font-size:13px; }
+  #qkbd button.pressed { background:rgba(61,107,216,.95); border-color:#7aa0ff; }
+
+
+  #padSheet { position:fixed; inset:0; background:rgba(0,0,0,.55); display:none; align-items:center;
+    justify-content:center; z-index:70; padding:24px; }
+  #padSheet .sheet { width:100%; max-width:320px; background:#1b1f29; border:1px solid #2c3444; border-radius:16px; padding:18px; }
+  #padSheet h3 { margin:0 0 14px; font-size:16px; }
+  #padSheet .row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:8px 0; }
+  #padSheet .seg { display:flex; gap:6px; }
+  #padSheet .seg button { padding:8px 14px; border-radius:9px; border:1px solid #2c3444; background:#1d2431;
+    color:#e6e8ee; font-size:14px; }
+  #padSheet .seg button.on { background:#3d6bd8; border-color:#5b8cff; }
+  #padSheet .close { width:100%; margin-top:14px; padding:12px; border-radius:11px; border:1px solid #2c3444;
+    background:#232936; color:#e6e8ee; font-size:15px; }
+
+  body.ui-hidden #bar { display:none; }
+  body.ui-hidden #hud { display:none; }
+  body.ui-hidden #showBtn { display:flex; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Flash Game Android</h1>
+  <p class="sub" id="sub">离线运行 · Ruffle 引擎</p>
+</header>
+<ul id="list"></ul>
+<div id="addbar">
+  <button id="helpBtn" title="帮助">?</button>
+  <button id="addSwf">＋ 添加 SWF 文件</button>
+  <button id="addDir">＋ 添加游戏文件夹</button>
+</div>
+
+<div id="modal" class="hidden">
+  <div class="sheet">
+    <div class="title" id="mTitle"></div>
+    <div id="mMenu">
+      <button id="mRename">重命名</button>
+      <button id="mDelete" class="danger">删除</button>
+      <button id="mCancel">取消</button>
+    </div>
+    <div id="mRenameBox" style="display:none">
+      <input id="mInput" type="text" />
+      <button id="mOk">确定</button>
+      <button id="mCancel2">取消</button>
+    </div>
+  </div>
+</div>
+
+<div id="progress" class="hidden">
+  <div>
+    <div class="bar"><div id="pfill"></div></div>
+    <div id="ptext">导入中 0%</div>
+  </div>
+</div>
+
+<div id="help">
+  <button class="close" id="helpClose">✕</button>
+  <h2>Flash Game Android <span style="color:#7f8798;font-size:13px">v1.0.0</span></h2>
+  <p>离线 Flash 播放器。APK 里不含任何游戏，内容由你自己导入。</p>
+
+  <h3>怎么用</h3>
+  <ul>
+    <li>「＋ 添加 SWF 文件」：导入 .swf，或 .exe（会尝试提取内嵌的 SWF）</li>
+    <li>「＋ 添加游戏文件夹」：导入带 data/ 的多文件游戏</li>
+    <li>点名字开始玩；<b>长按</b>可以重命名或删除</li>
+  </ul>
+
+  <h3>播放时的按钮</h3>
+  <div class="row"><span>⌨</span><span>虚拟按键：左侧方向键，右侧动作键（Z X A S D C + 空格 / 回车）。<b>长按 ⌨</b> 可调大小、透明度，并切换「手柄 / 全键盘」</span></div>
+    <div class="row"><span>⌨⌨</span><span>全键盘模式：26 键 + 数字 + 空格/回车/退格，用于输密码、输入文字、敲秘籍</span></div>
+    <div class="row"><span>秘籍</span><span>多数这类游戏用<b>方向键 + B 键</b>组合作弊，例如「上上下下左右左右 ba」（无限火焰）。用全键盘模式可以直接点 B</span></div>
+  <div class="row"><span>⟳</span><span>切换屏幕方向：竖屏 → 横屏 → 反向横屏</span></div>
+  <div class="row"><span>✥</span><span>拖动模式：可拖画面、双指缩放（开启时游戏不接收点击）</span></div>
+  <div class="row"><span>＋ －</span><span>放大 / 缩小</span></div>
+  <div class="row"><span>⤢</span><span>复位</span></div>
+  <div class="row"><span>◱</span><span>隐藏界面，点右上角 ☰ 恢复</span></div>
+  <div class="row"><span>← 返回</span><span>回到列表</span></div>
+
+  <h3>打开网址</h3>
+  <p>可以直接加载网络上的 .swf。目标站点需允许跨域读取（CORS），否则会加载失败。</p>
+  <div id="urlBox"><input id="urlInput" placeholder="https://example.com/game.swf"><button id="urlGo">打开</button></div>
+
+  <h3>改键</h3>
+  <p>虚拟按键发出的键位可以改，设置保存在本机。</p>
+  <div id="remapList"></div>
+  <button id="resetPad" class="mini">恢复默认按键</button>
+
+  <h3>关于</h3>
+  <div class="row"><span>版本</span><span>1.0.0 (versionCode 56)</span></div>
+  <div class="row"><span>编写语言</span><span>Java（Android 原生）<br>HTML / CSS / JavaScript</span></div>
+  <div class="row"><span>播放引擎</span><span>Ruffle（Rust → WebAssembly）</span></div>
+  <div class="row"><span>内置字体</span><span>Noto Sans JP（SIL OFL 1.1）</span></div>
+  <div class="row"><span>本地服务</span><span>仅监听 127.0.0.1:8080</span></div>
+  <div class="row"><span>联网</span><span>不访问外网（仅当你用"打开网址"时）</span></div>
+  <div class="row"><span>开发方式</span><span>项目由 vibe coding 生成，如有纰漏请见谅</span></div>
+
+  <h3>开源协议与致谢</h3>
+  <ul>
+    <li><b>Ruffle</b> — MIT OR Apache-2.0 · ruffle.rs</li>
+    <li><b>Noto Sans JP</b> — SIL Open Font License 1.1</li>
+    <li>许可证全文见应用数据目录的 <code>LICENSES/</code></li>
+  </ul>
+
+  <h3>免责声明</h3>
+  <p>本应用基于开源项目 <b>Ruffle（ruffle.rs）</b> 构建，用其作为 Flash 播放引擎。<b>非 Ruffle 官方应用</b>，与 Ruffle 团队无隶属或背书关系。</p>
+  <p>本应用不包含任何游戏内容。导入游戏的版权归原作者所有，请仅在合法范围内使用；因使用导入内容产生的任何问题由使用者自行承担。</p>
+</div>
+
+<div id="player">
+  <div id="bar">
+    <button id="back">← 返回</button>
+    <span class="name" id="title"></span>
+    <button class="icon" id="hudBtn">▣</button>
+    <button class="icon" id="rotBtn">⟳</button>
+    <button class="icon" id="cfgBtn">⚙</button>
+  </div>
+  <div id="stage">
+    <div id="loading">加载中…</div>
+    <div id="panLayer"></div>
+    <div id="pad">
+      <div class="cluster left"><div class="diamond" id="padDpad"></div></div>
+      <div class="cluster right">
+        <div class="minis" id="padMinis"></div>
+        <div class="diamond" id="padAction"></div>
+      </div>
+      <div id="qkbd"></div>
+    </div>
+    <div id="showBtn">☰</div>
+    <div id="hud">
+      <button id="padBtn">⌨</button>
+      <button id="hideBtn">◱</button>
+      <button id="panBtn">✥</button>
+      <button id="zoomIn">＋</button>
+      <button id="zoomOut">－</button>
+      <button id="reset">⤢</button>
+    </div>
+  </div>
+</div>
+
+<script>
+window.RufflePlayer = window.RufflePlayer || {};
+// 设备字体回退：key 必须是 Ruffle 认的 6 个标识符（sans/serif/typewriter/
+// japaneseGothic/japaneseGothicMono/japaneseMincho），写 Flash 字体名（如 _明朝）会被静默忽略；
+// value 必须是字体内部的 FULL_NAME（不是 URL/路径），Ruffle 用完整名注册字体。
+window.RufflePlayer.config = {
+  fontSources: ['FlashGameCJK.ttf'],
+  defaultFonts: {
+    sans: ['Flash Game CJK Regular'],
+    serif: ['Flash Game CJK Regular'],
+    typewriter: ['Flash Game CJK Regular'],
+    japaneseGothic: ['Flash Game CJK Regular'],
+    japaneseGothicMono: ['Flash Game CJK Regular'],
+    japaneseMincho: ['Flash Game CJK Regular']
+  }
+};
+</script>
+<script src="ruffle.js"></script>
+
+<div id="padSheet">
+  <div class="sheet">
+    <h3>键盘设置</h3>
+    <div class="row"><span>按键大小</span><div class="seg" id="sizeRow"></div></div>
+    <div class="row"><span>透明度</span><div class="seg" id="alphaRow"></div></div>
+    <div class="row"><span>键盘布局</span><div class="seg" id="modeRow"></div></div>
+    <button class="close" id="padSheetClose">关闭</button>
+  </div>
+</div>
+
+<script>
+var GAMES = [];
+var listEl = document.getElementById('list');
+var subEl = document.getElementById('sub');
+var MENU_GAME = null;
+
+window.setProgress = function (p) {
+  var box = document.getElementById('progress');
+  if (p < 0) { box.classList.add('hidden'); return; }
+  box.classList.remove('hidden');
+  document.getElementById('pfill').style.width = Math.max(0, Math.min(100, p)) + '%';
+  document.getElementById('ptext').textContent = p >= 100 ? '正在刷新列表…' : ('导入中 ' + p + '%');
+};
+
+function render() {
+  listEl.innerHTML = '';
+  if (!GAMES.length) {
+    var d = document.createElement('div');
+    d.className = 'empty';
+    d.innerHTML = '还没有游戏。<br><b>点下面的按钮添加</b>：<br>单个 .swf 选「添加 SWF」<br>带 data 文件夹的选「添加游戏文件夹」';
+    listEl.appendChild(d);
+    subEl.textContent = '离线运行 · Ruffle 引擎';
+    return;
+  }
+  subEl.textContent = GAMES.length + ' 个游戏 · 长按可重命名或删除';
+  GAMES.forEach(function (g) {
+    var li = document.createElement('li');
+    var b = document.createElement('button');
+    b.className = 'game';
+    var meta = document.createElement('span');
+    meta.className = 'meta';
+    var name = document.createElement('span');
+    name.textContent = g.n;
+    var small = document.createElement('small');
+    small.textContent = g.d || '';
+    meta.appendChild(name);
+    meta.appendChild(small);
+    var tag = document.createElement('span');
+    tag.className = 'tag' + (g.t === 'page' ? ' multi' : '');
+    tag.textContent = g.t === 'page' ? 'MULTI' : 'SWF';
+    b.appendChild(meta);
+    b.appendChild(tag);
+
+    var longPressed = false;
+    var timer = null;
+    b.addEventListener('touchstart', function () {
+      longPressed = false;
+      timer = setTimeout(function () { longPressed = true; openMenu(g); }, 550);
+    }, { passive: true });
+    b.addEventListener('touchmove', function () { clearTimeout(timer); }, { passive: true });
+    b.addEventListener('touchend', function () { clearTimeout(timer); }, { passive: true });
+    b.addEventListener('contextmenu', function (e) { e.preventDefault(); openMenu(g); });
+    b.onclick = function () { if (longPressed) { longPressed = false; return; } play(g); };
+
+    li.appendChild(b);
+    listEl.appendChild(li);
+  });
+}
+
+function loadGames() {
+  fetch('games.json?t=' + Date.now(), { cache: 'no-store' })
+    .then(function (r) { return r.json(); })
+    .then(function (j) { GAMES = Array.isArray(j) ? j : []; render(); })
+    .catch(function () { GAMES = []; render(); });
+}
+loadGames();
+
+function openMenu(g) {
+  MENU_GAME = g;
+  document.getElementById('mTitle').textContent = g.n;
+  document.getElementById('mMenu').style.display = 'block';
+  document.getElementById('mRenameBox').style.display = 'none';
+  document.getElementById('modal').classList.remove('hidden');
+}
+function closeMenu() { document.getElementById('modal').classList.add('hidden'); }
+
+document.getElementById('mCancel').onclick = closeMenu;
+document.getElementById('mCancel2').onclick = closeMenu;
+document.getElementById('mRename').onclick = function () {
+  document.getElementById('mMenu').style.display = 'none';
+  document.getElementById('mRenameBox').style.display = 'block';
+  document.getElementById('mInput').value = MENU_GAME ? MENU_GAME.n : '';
+  document.getElementById('mInput').focus();
+};
+document.getElementById('mOk').onclick = function () {
+  var v = document.getElementById('mInput').value.trim();
+  if (v && MENU_GAME && window.Bridge) {
+    window.setProgress(100);
+    Bridge.renameGame(MENU_GAME.r, v);
+  }
+  closeMenu();
+};
+document.getElementById('mDelete').onclick = function () {
+  if (MENU_GAME && window.Bridge) { window.setProgress(100); Bridge.deleteGame(MENU_GAME.r); }
+  closeMenu();
+};
+
+var playerBox = document.getElementById('player');
+var stage = document.getElementById('stage');
+var title = document.getElementById('title');
+var loading = document.getElementById('loading');
+var panLayer = document.getElementById('panLayer');
+var panBtn = document.getElementById('panBtn');
+var current = null;
+var rot = 0, zoom = 1, panX = 0, panY = 0, panMode = false;
+
+function cleanup() { if (current) { try { current.remove(); } catch (e) {} current = null; } }
+
+function applyTransform() {
+  if (!current) return;
+  var W = stage.clientWidth || window.innerWidth;
+  var H = stage.clientHeight || window.innerHeight;
+  var swap = (Math.abs(rot) % 180) === 90;
+  current.style.width = (swap ? H : W) + 'px';
+  current.style.height = (swap ? W : H) + 'px';
+  current.style.transform = 'translate(calc(-50% + ' + panX + 'px), calc(-50% + ' + panY + 'px)) rotate(' + rot + 'deg) scale(' + zoom + ')';
+}
+
+function setPanMode(on) {
+  panMode = on;
+  panLayer.classList.toggle('on', on);
+  panBtn.classList.toggle('on', on);
+}
+
+function resetView() { rot = 0; zoom = 1; panX = 0; panY = 0; setPanMode(false); applyTransform(); }
+
+function play(g) {
+  document.body.classList.remove('ui-hidden');
+  playerBox.classList.add('on');
+  title.textContent = g.n;
+  cleanup();
+  rot = 0; zoom = 1; panX = 0; panY = 0;
+  setPanMode(false);
+  loading.style.display = 'flex';
+  loading.textContent = '加载中…';
+
+  if (g.t === 'page') {
+    var fr = document.createElement('iframe');
+    fr.src = encodeURI(g.p);
+    fr.allow = 'autoplay';
+    stage.insertBefore(fr, loading);
+    current = fr;
+    applyTransform();
+    loading.style.display = 'none';
+    return;
+  }
+
+  var ruffle = window.RufflePlayer.newest();
+  var p = ruffle.createPlayer();
+  stage.insertBefore(p, loading);
+  current = p;
+  applyTransform();
+  try {
+    p.load(encodeURI(g.p)).then(function () { loading.style.display = 'none'; })
+                          .catch(function (e) { loading.textContent = '加载失败: ' + e; });
+  } catch (e) {
+    loading.textContent = '加载失败: ' + e;
+  }
+}
+
+document.getElementById('back').onclick = function () {
+  playerBox.classList.remove('on');
+  cleanup();
+  var padWasOn = padEl.classList.contains('on');
+  if (padWasOn) { padEl.classList.remove('on'); document.body.classList.remove('pad-open'); document.getElementById('padBtn').classList.remove('on'); }
+  if (window.Bridge) Bridge.setOrientation(0);
+  orient = 0;
+  document.getElementById('rotBtn').textContent = '⟳';
+};
+var orient = 0;
+document.getElementById('rotBtn').onclick = function () {
+  orient = (orient + 1) % 4;
+  if (window.Bridge) { Bridge.setOrientation(orient); }
+  else { rot = (rot + 90) % 360; applyTransform(); }
+};
+
+document.getElementById('hudBtn').onclick = function () {
+  document.body.classList.toggle('hud-hidden');
+};
+document.getElementById('zoomIn').onclick = function () { zoom = Math.min(5, zoom * 1.25); applyTransform(); };
+document.getElementById('zoomOut').onclick = function () { zoom = Math.max(0.3, zoom / 1.25); applyTransform(); };
+document.getElementById('reset').onclick = resetView;
+panBtn.onclick = function () { setPanMode(!panMode); };
+var padEl = document.getElementById('pad');
+var padDpad = document.getElementById('padDpad');
+var padAction = document.getElementById('padAction');
+var padMinis = document.getElementById('padMinis');
+var padBtn = document.getElementById('padBtn');
+
+var PAD_SLOTS = [
+  { id:'left',  def:'ArrowLeft' },
+  { id:'up',    def:'ArrowUp' },
+  { id:'down',  def:'ArrowDown' },
+  { id:'right', def:'ArrowRight' },
+  { id:'z',     def:'z' },
+  { id:'x',     def:'x' },
+  { id:'a',     def:'a' },
+  { id:'s',     def:'s' },
+  { id:'d',     def:'d' },
+  { id:'c',     def:'c' },
+  { id:'space', def:' ' },
+  { id:'enter', def:'Enter' }
+];
+var KEY_CHOICES = ['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','z','x','c','a','s','d','q','w','e','r',
+                   'f','g','h','j','k','l',' ','Enter','Escape','Shift','Tab','1','2','3','4','5'];
+
+function labelFor(k) {
+  if (k === ' ') return '空格';
+  if (k === 'Enter') return '回车';
+  if (k === 'Escape') return 'Esc';
+  if (k === 'Shift') return 'Shift';
+  if (k === 'Tab') return 'Tab';
+  var m = { ArrowLeft:'←', ArrowRight:'→', ArrowUp:'↑', ArrowDown:'↓' };
+  if (m[k]) return m[k];
+  return k.length === 1 ? k.toUpperCase() : k;
+}
+function loadPad() {
+  var saved = {};
+  try { saved = JSON.parse(localStorage.getItem('padKeys') || '{}'); } catch (e) {}
+  return PAD_SLOTS.map(function (s) { return { id: s.id, key: saved[s.id] || s.def }; });
+}
+var PAD = loadPad();
+function savePad() {
+  var o = {};
+  PAD.forEach(function (p) { o[p.id] = p.key; });
+  try { localStorage.setItem('padKeys', JSON.stringify(o)); } catch (e) {}
+}
+
+function keyTarget() {
+  if (!current) return null;
+  if (current.tagName === 'IFRAME') {
+    try {
+      var doc = current.contentDocument;
+      if (!doc) return null;
+      var el = doc.querySelector('ruffle-player');
+      if (el && el.focus) el.focus({ preventScroll: true });
+      return el;
+    } catch (e) { return null; }
+  }
+  if (current.focus) current.focus({ preventScroll: true });
+  return current;
+}
+
+var SPECIAL_KEYS = {
+  ' ': { code: 'Space', kc: 32 },
+  'Enter': { code: 'Enter', kc: 13 },
+  'Backspace': { code: 'Backspace', kc: 8 },
+  'Escape': { code: 'Escape', kc: 27 },
+  'ArrowLeft': { code: 'ArrowLeft', kc: 37 },
+  'ArrowUp': { code: 'ArrowUp', kc: 38 },
+  'ArrowRight': { code: 'ArrowRight', kc: 39 },
+  'ArrowDown': { code: 'ArrowDown', kc: 40 },
+  'Shift': { code: 'ShiftLeft', kc: 16 },
+  'Tab': { code: 'Tab', kc: 9 }
+};
+
+function keyMeta(k) {
+  if (SPECIAL_KEYS[k]) return { key: k, code: SPECIAL_KEYS[k].code, kc: SPECIAL_KEYS[k].kc };
+  if (k.length === 1) {
+    if (/[a-z]/i.test(k)) {
+      var up = k.toUpperCase();
+      return { key: k, code: 'Key' + up, kc: up.charCodeAt(0) };
+    }
+    if (/[0-9]/.test(k)) return { key: k, code: 'Digit' + k, kc: k.charCodeAt(0) };
+    return { key: k, code: '', kc: k.charCodeAt(0) };
+  }
+  return { key: k, code: '', kc: 0 };
+}
+
+function sendKey(type, key) {
+  var el = keyTarget();
+  if (!el) return;
+  var m = keyMeta(key);
+  var ev;
+  try {
+    ev = new KeyboardEvent(type, { key: m.key, code: m.code, bubbles: true, cancelable: true });
+    Object.defineProperty(ev, 'keyCode', { get: function () { return m.kc; } });
+    Object.defineProperty(ev, 'which', { get: function () { return m.kc; } });
+  } catch (e) {
+    try { ev = new KeyboardEvent(type, { key: m.key, bubbles: true, cancelable: true }); } catch (e2) { return; }
+  }
+  el.dispatchEvent(ev);
+}
+
+var DPAD_CELLS = ['', 'up', '', 'left', '', 'right', '', 'down', ''];
+var ACT_CELLS  = ['', 's', '', 'a', '', 'x', '', 'z', ''];
+var MINI_CELLS = ['d', 'c', 'space', 'enter'];
+
+var PAD_SIZES  = { s: '46px', m: '56px', l: '68px' };
+var PAD_ALPHAS = { low: 0.36, mid: 0.62, high: 0.86 };
+var padCfg = { size: 'm', alpha: 'mid', mode: 'pad' };
+try {
+  var savedCfg = JSON.parse(localStorage.getItem('padCfg') || '{}');
+  if (savedCfg.size) padCfg.size = savedCfg.size;
+  if (savedCfg.alpha) padCfg.alpha = savedCfg.alpha;
+  if (savedCfg.mode === 'qwerty') padCfg.mode = 'qwerty';
+} catch (e) {}
+
+function applyPadCfg() {
+  var k = parseInt(PAD_SIZES[padCfg.size] || PAD_SIZES.m, 10);
+  if (window.innerHeight < 520) k = Math.round(k * 0.82);   // 横屏矮
+  if (window.innerWidth < 620) k = Math.round(k * 0.72);    // 竖屏窄，避免左右两簇相撞
+  padEl.style.setProperty('--k', k + 'px');
+  padEl.style.setProperty('--a', String(PAD_ALPHAS[padCfg.alpha] || PAD_ALPHAS.mid));
+  padEl.classList.toggle('qmode', padCfg.mode === 'qwerty');
+  try { localStorage.setItem('padCfg', JSON.stringify(padCfg)); } catch (e) {}
+}
+
+function padEntry(id) {
+  for (var i = 0; i < PAD.length; i++) if (PAD[i].id === id) return PAD[i];
+  return null;
+}
+
+function bindKey(b, key) {
+  b.addEventListener('pointerdown', function (e) {
+    e.preventDefault();
+    b.classList.add('pressed');
+    if (navigator.vibrate) { try { navigator.vibrate(8); } catch (err) {} }
+    sendKey('keydown', key);
+  });
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (ev) {
+    b.addEventListener(ev, function (e) {
+      e.preventDefault();
+      if (!b.classList.contains('pressed')) return;
+      b.classList.remove('pressed');
+      sendKey('keyup', key);
+    });
+  });
+  b.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+}
+
+function makePadButton(p) {
+  var b = document.createElement('button');
+  b.textContent = labelFor(p.key);
+  b.setAttribute('data-id', p.id);
+  bindKey(b, p.key);
+  return b;
+}
+
+var QROWS = [
+  ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'],
+  ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'],
+  ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', '⌫'],
+  ['z', 'x', 'c', 'v', 'b', 'n', 'm', '空格', '回车']
+];
+var qkbd = document.getElementById('qkbd');
+
+function qKey(label) {
+  if (label === '⌫') return 'Backspace';
+  if (label === '空格') return ' ';
+  if (label === '回车') return 'Enter';
+  return label;
+}
+
+function buildQwerty() {
+  qkbd.innerHTML = '';
+  QROWS.forEach(function (row) {
+    var r = document.createElement('div');
+    r.className = 'krow';
+    row.forEach(function (label) {
+      var b = document.createElement('button');
+      if (label === '空格' || label === '回车' || label === '⌫') b.className = 'wide';
+      b.textContent = label;
+      bindKey(b, qKey(label));
+      r.appendChild(b);
+    });
+    qkbd.appendChild(r);
+  });
+}
+
+function fillPadGrid(el, cells) {
+  el.innerHTML = '';
+  cells.forEach(function (id) {
+    if (!id) {
+      var sp = document.createElement('div');
+      sp.className = 'spacer';
+      el.appendChild(sp);
+      return;
+    }
+    var p = padEntry(id);
+    if (p) el.appendChild(makePadButton(p));
+  });
+}
+
+function buildPad() {
+  fillPadGrid(padDpad, DPAD_CELLS);
+  fillPadGrid(padAction, ACT_CELLS);
+  padMinis.innerHTML = '';
+  MINI_CELLS.forEach(function (id) {
+    var p = padEntry(id);
+    if (p) padMinis.appendChild(makePadButton(p));
+  });
+}
+buildPad();
+buildQwerty();
+applyPadCfg();
+
+function buildRemap() {
+  var box = document.getElementById('remapList');
+  if (!box) return;
+  box.innerHTML = '';
+  PAD.forEach(function (p, idx) {
+    var row = document.createElement('div');
+    row.className = 'row';
+    var lab = document.createElement('span');
+    lab.textContent = '按键 ' + (idx + 1) + '  ' + labelFor(p.key);
+    var sel = document.createElement('select');
+    KEY_CHOICES.forEach(function (k) {
+      var o = document.createElement('option');
+      o.value = k;
+      o.textContent = labelFor(k);
+      if (k === p.key) o.selected = true;
+      sel.appendChild(o);
+    });
+    sel.onchange = function () {
+      PAD[idx].key = sel.value;
+      savePad();
+      buildPad();
+      buildRemap();
+    };
+    row.appendChild(lab);
+    row.appendChild(sel);
+    box.appendChild(row);
+  });
+}
+buildRemap();
+
+var rp = document.getElementById('resetPad');
+if (rp) rp.onclick = function () {
+  PAD = PAD_SLOTS.map(function (s) { return { id: s.id, key: s.def }; });
+  savePad();
+  buildPad();
+  buildRemap();
+};
+
+function openPadSheet() {
+  var sheet = document.getElementById('padSheet');
+  var sr = document.getElementById('sizeRow'), ar = document.getElementById('alphaRow');
+  sr.innerHTML = ''; ar.innerHTML = '';
+  [['s', '小'], ['m', '中'], ['l', '大']].forEach(function (it) {
+    var b = document.createElement('button');
+    b.textContent = it[1];
+    if (padCfg.size === it[0]) b.className = 'on';
+    b.onclick = function () { padCfg.size = it[0]; applyPadCfg(); buildPad(); openPadSheet(); };
+    sr.appendChild(b);
+  });
+  [['low', '淡'], ['mid', '中'], ['high', '浓']].forEach(function (it) {
+    var b = document.createElement('button');
+    b.textContent = it[1];
+    if (padCfg.alpha === it[0]) b.className = 'on';
+    b.onclick = function () { padCfg.alpha = it[0]; applyPadCfg(); openPadSheet(); };
+    ar.appendChild(b);
+  });
+  var mr = document.getElementById('modeRow');
+  if (mr) {
+    mr.innerHTML = '';
+    [['pad', '手柄'], ['qwerty', '全键盘']].forEach(function (it) {
+      var b = document.createElement('button');
+      b.textContent = it[1];
+      if (padCfg.mode === it[0]) b.className = 'on';
+      b.onclick = function () { padCfg.mode = it[0]; applyPadCfg(); openPadSheet(); };
+      mr.appendChild(b);
+    });
+  }
+  sheet.style.display = 'flex';
+}
+function closePadSheet() { document.getElementById('padSheet').style.display = 'none'; }
+
+var cfgBtn = document.getElementById('cfgBtn');
+if (cfgBtn) cfgBtn.onclick = openPadSheet;
+
+padBtn.onclick = function () {
+  var on = padEl.classList.toggle('on');
+  document.body.classList.toggle('pad-open', on);
+  padBtn.classList.toggle('on', on);
+  if (on) document.body.classList.remove('hud-hidden');
+  if (on) setTimeout(keyTarget, 30);
+};
+document.getElementById('hideBtn').onclick = function () { document.body.classList.add('ui-hidden'); setTimeout(applyTransform, 60); };
+document.getElementById('showBtn').onclick = function () { document.body.classList.remove('ui-hidden'); setTimeout(applyTransform, 60); };
+
+var addSwf = document.getElementById('addSwf');
+var addDir = document.getElementById('addDir');
+if (window.Bridge) {
+  addSwf.onclick = function () { Bridge.pickFiles(); };
+  addDir.onclick = function () { Bridge.pickFolder(); };
+} else {
+  addSwf.style.opacity = '0.35'; addDir.style.opacity = '0.35';
+  addSwf.onclick = addDir.onclick = function () { alert('这个页面不在 App 里运行'); };
+}
+
+var dragging = false, lastX = 0, lastY = 0, pointers = {}, pinchStart = 0, pinchZoomStart = 1;
+panLayer.addEventListener('pointerdown', function (e) {
+  panLayer.setPointerCapture(e.pointerId);
+  pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
+  var ids = Object.keys(pointers);
+  if (ids.length === 1) { dragging = true; lastX = e.clientX; lastY = e.clientY; }
+  else if (ids.length === 2) {
+    dragging = false;
+    var a = pointers[ids[0]], b = pointers[ids[1]];
+    pinchStart = Math.hypot(a.x - b.x, a.y - b.y);
+    pinchZoomStart = zoom;
+  }
+  e.preventDefault();
+}, { passive: false });
+panLayer.addEventListener('pointermove', function (e) {
+  if (!pointers[e.pointerId]) return;
+  pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
+  var ids = Object.keys(pointers);
+  if (ids.length === 2) {
+    var a = pointers[ids[0]], b = pointers[ids[1]];
+    var d = Math.hypot(a.x - b.x, a.y - b.y);
+    if (pinchStart > 0) { zoom = Math.max(0.3, Math.min(5, pinchZoomStart * d / pinchStart)); applyTransform(); }
+  } else if (dragging) {
+    panX += e.clientX - lastX; panY += e.clientY - lastY;
+    lastX = e.clientX; lastY = e.clientY;
+    applyTransform();
+  }
+  e.preventDefault();
+}, { passive: false });
+function endPointer(e) {
+  delete pointers[e.pointerId];
+  if (Object.keys(pointers).length === 0) { dragging = false; pinchStart = 0; }
+}
+panLayer.addEventListener('pointerup', endPointer);
+panLayer.addEventListener('pointercancel', endPointer);
+
+(function () {
+  var c = document.getElementById('padSheetClose');
+  if (c) c.onclick = closePadSheet;
+  var s = document.getElementById('padSheet');
+  if (s) s.addEventListener('click', function (e) { if (e.target.id === 'padSheet') closePadSheet(); });
+})();
+document.getElementById('helpBtn').onclick = function () { document.getElementById('help').classList.add('on'); };
+document.getElementById('helpClose').onclick = function () { document.getElementById('help').classList.remove('on'); };
+document.getElementById('urlGo').onclick = function () {
+  var u = document.getElementById('urlInput').value.trim();
+  if (!/^https?:\/\//i.test(u)) { alert('请输入 http:// 或 https:// 开头的地址'); return; }
+  document.getElementById('help').classList.remove('on');
+  play({ n: decodeURIComponent(u.split('/').pop() || u), t: 'swf', p: u });
+};
+window.addEventListener('resize', function () { applyTransform(); applyPadCfg(); });
+window.addEventListener('orientationchange', function () { setTimeout(function () { applyTransform(); applyPadCfg(); }, 250); });
+</script>
+</body>
+</html>

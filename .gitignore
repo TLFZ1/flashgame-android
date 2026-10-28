@@ -1,0 +1,23 @@
+# build output
+build/
+out/
+*.apk
+*.aab
+
+# signing material — NEVER commit
+*.keystore
+*.jks
+keystore.properties
+
+# large third-party binaries fetched by tools/fetch-deps.sh
+app/assets/ruffle.js
+app/assets/*.wasm
+app/assets/font.ttf
+app/assets/Noto Sans CJK JP
+
+# toolchains / scratch
+*.zip
+android-*/
+jdk-*/
+chromeprofile/
+*.log
